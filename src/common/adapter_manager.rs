@@ -73,6 +73,7 @@ where
             .collect()
     }
 
+    #[allow(dead_code)]
     pub fn peripheral_mut(
         &self,
         id: &PeripheralId,

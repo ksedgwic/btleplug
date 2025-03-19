@@ -164,7 +164,7 @@ impl Peripheral {
         })
     }
 
-    pub(crate) fn report_properties(&self, mut properties: PeripheralProperties) {
+    pub(crate) fn report_properties(&self, properties: PeripheralProperties) {
         let mut guard = self.shared.lock().unwrap();
 
         guard.properties = Some(properties);
