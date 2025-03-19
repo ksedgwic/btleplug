@@ -43,7 +43,7 @@ bluez-async = "0.8.0"
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.19.0"
 once_cell = "1.20.2"
-jni-utils = "0.1.1"
+jni-utils = { version = "0.1.1", path = "../jni-utils-rs" }
 
 [target.'cfg(target_vendor = "apple")'.dependencies]
 objc2 = "0.5.2"
