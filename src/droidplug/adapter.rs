@@ -42,7 +42,7 @@ impl Debug for Adapter {
 
 impl Adapter {
     pub(crate) fn new() -> Result<Self> {
-        let env = global_jvm().get_env()?;
+        let env = global_jvm().attach_current_thread()?;
 
         let obj = env.new_object(
             "com/nonpolynomial/btleplug/android/impl/Adapter",
@@ -61,7 +61,7 @@ impl Adapter {
 
     pub(crate) fn new_with_loader(class_loader: JObject) -> Result<Self> {
         debug!("Adapter::new_with_loader starting");
-        let env = global_jvm().get_env()?;
+        let env = global_jvm().attach_current_thread()?;
 
         // Load Java Adapter class explicitly from the class loader
         let class_name = env.new_string("com.nonpolynomial.btleplug.android.impl.Adapter")?;
@@ -118,7 +118,7 @@ impl Adapter {
     pub fn report_scan_result(&self, scan_result: JObject) -> Result<Peripheral> {
         use std::convert::TryInto;
 
-        let env = global_jvm().get_env()?;
+        let env = global_jvm().attach_current_thread()?;
         let scan_result = JScanResult::from_env(&env, scan_result)?;
 
         let (addr, properties): (BDAddr, Option<PeripheralProperties>) = scan_result.try_into()?;
@@ -146,7 +146,7 @@ impl Adapter {
     }
 
     fn add(&self, address: BDAddr) -> Result<Peripheral> {
-        let env = global_jvm().get_env()?;
+        let env = global_jvm().attach_current_thread()?;
         let peripheral = Peripheral::new(&env, self.internal.as_obj(), address)?;
         self.manager.add_peripheral(peripheral.clone());
         Ok(peripheral)
@@ -194,7 +194,7 @@ impl Central for Adapter {
     }
 
     async fn start_scan(&self, filter: ScanFilter) -> Result<()> {
-        let env = global_jvm().get_env()?;
+        let env = global_jvm().attach_current_thread()?;
         let filter = JScanFilter::new(&env, filter)?;
         env.call_method(
             &self.internal,
@@ -206,7 +206,7 @@ impl Central for Adapter {
     }
 
     async fn stop_scan(&self) -> Result<()> {
-        let env = global_jvm().get_env()?;
+        let env = global_jvm().attach_current_thread()?;
         env.call_method(&self.internal, "stopScan", "()V", &[])?;
         Ok(())
     }
