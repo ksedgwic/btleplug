@@ -53,6 +53,65 @@ pub fn init(env: &JNIEnv) -> crate::Result<()> {
     Ok(())
 }
 
+pub fn init_with_loader(env: &JNIEnv, class_loader: JObject) -> crate::Result<()> {
+    debug!("jni_utils::init_with_loader starting");
+    let _ = jni_utils::init_with_loader(env, class_loader);
+    debug!("jni_utils::init_with_loader finished");
+
+    debug!("JNI initialization with_loader starting");
+    match GLOBAL_JVM.set(env.get_java_vm()?) {
+        Ok(_) => debug!("Java VM successfully set in GLOBAL_JVM"),
+        Err(_) => debug!("Failed to set Java VM in GLOBAL_JVM"),
+    };
+
+    debug!("Registering (with_loader) native methods");
+    let class_name = env.new_string("com.nonpolynomial.btleplug.android.impl.Adapter")?;
+    let class = env.auto_local(
+        env.call_method(
+            class_loader,
+            "loadClass",
+            "(Ljava/lang/String;)Ljava/lang/Class;",
+            &[::jni::objects::JValue::Object(class_name.into())],
+        )?
+        .l()?,
+    );
+    env.register_native_methods(
+        &class,
+        &[
+            NativeMethod {
+                name: "reportScanResult".into(),
+                sig: "(Landroid/bluetooth/le/ScanResult;)V".into(),
+                fn_ptr: adapter_report_scan_result as *mut c_void,
+            },
+            NativeMethod {
+                name: "onConnectionStateChanged".into(),
+                sig: "(Ljava/lang/String;Z)V".into(),
+                fn_ptr: adapter_on_connection_state_changed as *mut c_void,
+            },
+        ],
+    )?;
+
+    debug!("Native methods registered");
+
+    let classes = [
+        "com/nonpolynomial/btleplug/android/impl/Peripheral",
+        "com/nonpolynomial/btleplug/android/impl/ScanFilter",
+        "com/nonpolynomial/btleplug/android/impl/NotConnectedException",
+        "com/nonpolynomial/btleplug/android/impl/PermissionDeniedException",
+        "com/nonpolynomial/btleplug/android/impl/UnexpectedCallbackException",
+        "com/nonpolynomial/btleplug/android/impl/UnexpectedCharacteristicException",
+        "com/nonpolynomial/btleplug/android/impl/NoSuchCharacteristicException",
+    ];
+
+    for class in &classes {
+        debug!("Finding and adding class with loader: {}", class);
+        jni_utils::classcache::find_add_class_with_loader(env, class, class_loader)?;
+    }
+
+    debug!("All classes found and added successfully");
+    Ok(())
+}
+
 pub fn global_jvm() -> &'static JavaVM {
     GLOBAL_JVM.get().expect(
         "Droidplug has not been initialized. Please initialize it with btleplug::platform::init().",

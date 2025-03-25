@@ -13,11 +13,12 @@ use crate::{
 use async_trait::async_trait;
 use futures::stream::Stream;
 use jni::{
-    objects::{GlobalRef, JObject, JString},
+    objects::{GlobalRef, JClass, JObject, JString},
     strings::JavaStr,
     sys::jboolean,
     JNIEnv,
 };
+use log::debug;
 use std::{
     fmt::{Debug, Formatter},
     pin::Pin,
@@ -55,6 +56,62 @@ impl Adapter {
         };
         env.set_rust_field(obj, "handle", adapter.clone())?;
 
+        Ok(adapter)
+    }
+
+    pub(crate) fn new_with_loader(class_loader: JObject) -> Result<Self> {
+        debug!("Adapter::new_with_loader starting");
+        let env = global_jvm().get_env()?;
+
+        // Load Java Adapter class explicitly from the class loader
+        let class_name = env.new_string("com.nonpolynomial.btleplug.android.impl.Adapter")?;
+        let adapter_class_obj = env
+            .call_method(
+                class_loader,
+                "loadClass",
+                "(Ljava/lang/String;)Ljava/lang/Class;",
+                &[::jni::objects::JValue::Object(class_name.into())],
+            )?
+            .l()?;
+
+        // Convert to JNI JClass reference explicitly
+        let adapter_class = JClass::from(adapter_class_obj);
+        debug!("Adapter class loaded and converted to JClass.");
+
+        // Get Adapter constructor explicitly
+        let ctor_id = env.get_method_id(adapter_class, "<init>", "()V")?;
+
+        // Explicitly create your Adapter instance
+        let obj = env.new_object_unchecked(adapter_class, ctor_id, &[])?;
+
+        // Confirm object is not null explicitly
+        if obj.is_null() {
+            return Err(Error::RuntimeError(
+                "Failed to create Adapter instance".into(),
+            ));
+        }
+
+        // Log explicitly created object type
+        let obj_class = env.get_object_class(obj)?;
+        let class_name_obj = env
+            .call_method(obj_class, "getName", "()Ljava/lang/String;", &[])?
+            .l()?;
+        let class_name_str: String = env.get_string(class_name_obj.into())?.into();
+        debug!("Created Java object explicitly of type: {}", class_name_str);
+
+        // Create Rust-side Adapter
+        let internal = env.new_global_ref(obj)?;
+        let adapter = Self {
+            manager: Arc::new(AdapterManager::default()),
+            internal,
+        };
+
+        // Set Rust handle explicitly in Java instance
+        let adapter_ptr = Box::into_raw(Box::new(adapter.clone())) as jni::sys::jlong;
+        let handle_field_id = env.get_field_id(adapter_class, "handle", "J")?;
+        env.set_field_unchecked(obj, handle_field_id, adapter_ptr.into())?;
+
+        debug!("Adapter::new_with_loader finished successfully.");
         Ok(adapter)
     }
 
