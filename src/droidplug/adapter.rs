@@ -194,6 +194,7 @@ impl Central for Adapter {
     }
 
     async fn start_scan(&self, filter: ScanFilter) -> Result<()> {
+        debug!("Adapter start_scan starting");
         let env = global_jvm().attach_current_thread()?;
         let filter = JScanFilter::new(&env, filter)?;
         env.call_method(
@@ -202,16 +203,19 @@ impl Central for Adapter {
             "(Lcom/nonpolynomial/btleplug/android/impl/ScanFilter;)V",
             &[filter.into()],
         )?;
+        debug!("Adapter start_scan finished");
         Ok(())
     }
 
     async fn stop_scan(&self) -> Result<()> {
+        debug!("Adapter stop_scan starting");
         let env = global_jvm().attach_current_thread()?;
         env.call_method(&self.internal, "stopScan", "()V", &[])?;
         Ok(())
     }
 
     async fn peripherals(&self) -> Result<Vec<Peripheral>> {
+        debug!("Adapter peripherals starting");
         Ok(self.manager.peripherals())
     }
 
@@ -222,6 +226,7 @@ impl Central for Adapter {
     }
 
     async fn add_peripheral(&self, address: &PeripheralId) -> Result<Peripheral> {
+        debug!("Adapter add_peripheral {:?}", address);
         self.add(address.0)
     }
 

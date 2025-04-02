@@ -52,6 +52,7 @@ class Adapter {
           throw new RuntimeException("No bluetooth scanner available for adapter");
         }
         scanner.startScan(filters, settings, this.callback);
+		Log.d("Adapter", "Scan explicitly started");
     }
 
     @SuppressLint("MissingPermission")
